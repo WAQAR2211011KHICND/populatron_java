@@ -6,13 +6,13 @@ import java.nio.file.Paths;
 import java.util.List;
 
 
-public class Fetching {
+public class Fetch {
 
     private List<String> lines;
     private String Path;
     
 
-    public Fetching() {
+    public Fetch() {
 
     }
 

@@ -8,8 +8,7 @@ public class InformationsStats {
    private List<WorldCitiesInterface> WorldCitiesData;
    private Long Population;
    
-   public  InformationsStats(List<WorldCitiesInterface> w) {    
-        this.WorldCitiesData = w;
+    public  InformationsStats() {    
     }
     
     

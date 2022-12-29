@@ -5,49 +5,207 @@
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+import fetch_parse.*;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-// import static org.mockito.Mockito.mock;
-// import static org.mockito.ArgumentMatchers.any;
-// import static org.mockito.ArgumentMatchers.anyInt;
-// import static org.mockito.BDDMockito.then;
-// import static org.mockito.Mockito.times;
-// import static org.mockito.BDDMockito.given;
-// import org.mockito.Mock;
+import static org.mockito.Mockito.mock;
+import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.times;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.ArgumentMatchers.any;
+import java.util.Arrays;
+
 
 public class PopulationCounterTest {
-
     
+    String[] mockArray = new String[]{
+        "ad,bixisarri,Bixisarri,06,,42.4833333,1.4666667",
+        "ad,canillo,Canillo,02,3292,42.5666667,1.6",
+        "ad,casas vila,Casas Vila,03,,42.5333333,1.5666667",
+        "ad,certers,Certers,06,,42.4666667,1.5",
+        "ad,certes,Cert�s,06,,42.4666667,1.5",
+        "ad,eixirivall,Eixirivall,06,,42.4666667,1.5",
+        "ad,el pui,El Pui,04,,42.55,1.5166667",
+        "ad,els bons,Els Bons,03,,42.5333333,1.5833333",
+        "ad,el serrat,El Serrat,04,,42.6166667,1.55",
+        "ad,els plans,Els Plans,02,,42.5833333,1.6333333",
+    };
+    
+    // https://stackoverflow.com/questions/8708342/redirect-console-output-to-string-in-java
+    private ByteArrayOutputStream baos = new ByteArrayOutputStream(); 
+    private final PrintStream old = System.out;
+
+    @BeforeEach
+    public void setupTest(){
+        PrintStream ps = new PrintStream(baos);
+        System.setOut(ps);
+        System.out.flush();
+    }
+
+
+
+
     //Testing the PopulationCounter Class with out mocking 
     @Test
     public void testSomeLibraryMethod() throws Exception {
 
         // Setup
         String expected = "World population is: 1347982728";
-        // https://stackoverflow.com/questions/8708342/redirect-console-output-to-string-in-java
-        ByteArrayOutputStream baos = new ByteArrayOutputStream(); 
-        PrintStream ps = new PrintStream(baos);
-        PrintStream old = System.out;
-        System.setOut(ps);
-        System.out.flush();
 
         // Exercise
-        PopulationCounter.main(new String[0]);
+        Main.main(new String[0]);
 
         // Assert
         String output = baos.toString();
         assertEquals( expected, output );
-
-        // Teardown
-        System.setOut(old);
     
     }
 
 
+
+    //Mocking Fetch class
     @Test
     public void FetchingFileTest() throws Exception{
-        // assertEquals(1,2);
+    
+        //Setup    
+        String expected = "World population is: 3292";
         
+        List<String> mockList = Arrays.asList( this.mockArray);
+        Fetch fetchingCsvFile = mock(Fetch.class);
+        given(fetchingCsvFile.getLines()).willReturn(mockList);
+
+        
+        //Exercise
+        new PopulationCounter(fetchingCsvFile, new ParsingData(), new InformationsStats());
+        
+
+        //Assert
+
+        //checking the Fetch.setPath() is called one time or not
+        then(fetchingCsvFile).should(times(1)).setPath(any());
+        
+        //checking the length of csv data it recieves 
+        assertEquals(fetchingCsvFile.getLines().size(), 10);
+
+
+        String output = baos.toString();
+        
+        //Output should be "World population is: 3292"
+        assertEquals( expected, output );
+    }
+
+
+    //Mocking the 'parsingData' class  
+    @Test
+    public void ParsingDataTest() throws Exception{
+
+
+        //Setup 
+        
+        List<WorldCitiesInterface> wcp = Arrays.asList( this.mockArray).stream()
+        .map(li ->{
+            String[] CityArray= li.split(",");
+            WorldCitiesInterface w = new WorldCitiesInterface();
+            w.setPopulation(CityArray[4].length()==0 ? 0 : Long.parseLong(CityArray[4]));
+            return w;
+        }).toList();
+
+        ParsingData pd = mock(ParsingData.class);
+        
+        given(pd.getWcp()).willReturn(wcp);
+        
+        String expected = "World population is: 3292";
+        
+        //Exercise
+        new PopulationCounter(new Fetch(), pd, new InformationsStats());
+    
+
+        //Assert
+        assertEquals(pd.getWcp().size(), 10);
+
+        //checking the ParsingData.setWcp() is called one time or not
+        then(pd).should(times(1)).setWcp(any());
+
+        //checking the 1 index data of mock data
+        assertEquals(3292, pd.getWcp().get(1).getPopulation());
+
+        
+        String output = baos.toString();
+        
+        //Output should be "World population is: 3292"
+        assertEquals( expected, output );
+    }
+
+
+
+    
+    //Mocking the 'InformationsStats' class  
+    @Test
+    public void InformationsStatsTest() throws Exception{
+
+
+        //Setup 
+        InformationsStats Is = mock(InformationsStats.class);
+        
+        given(Is.getPopulation()).willReturn(Long.valueOf(3292));
+        given(Is.processPopulation()).willReturn(Is);
+
+        
+        String expected = "World population is: 3292";
+        
+        //Exercise
+        new PopulationCounter(new Fetch(), new ParsingData(), Is);
+    
+
+        //Assert
+        
+        //checking the InformationsStats.processPopulation() is called one time or not
+        then(Is).should(times(1)).processPopulation();
+        
+        //checking the get Population function will return long
+        assertEquals(Is.getPopulation(), 3292);
+        
+
+        String output = baos.toString();
+        //Output should be "World population is: 3292"
+        assertEquals( expected, output );
+    }
+
+
+    //Testing the WorldCitiesInterface class
+    @Test 
+    public void WorldCities_Class_Test(){
+        
+        //Setup
+        String[] CityArray= mockArray[1].split(",");
+        WorldCitiesInterface w = new WorldCitiesInterface();
+        
+        //Exercise
+        w.setCountry(CityArray[0]);
+        w.setCity(CityArray[1]);
+        w.setAccentCity(CityArray[2]);
+        w.setRegion(CityArray[3]);
+        w.setPopulation(CityArray[4].length()==0 ? 0 : Long.parseLong(CityArray[4]));
+        w.setLatitude(CityArray[5]);
+        w.setLongitude(CityArray[6]);
+        
+        //Assert
+        assertEquals("ad", w.getCountry() );
+        assertEquals("canillo", w.getCity() );
+        assertEquals("Canillo", w.getAccentCity() );
+        assertEquals("02", w.getRegion() );
+        assertEquals(3292, w.getPopulation() );
+        assertEquals("42.5666667", w.getLatitude() );
+        assertEquals("1.6", w.getLongitude() );
+        
+    }
+
+    @AfterEach
+    public void resetPrint(){
+        System.setOut(old);
     }
 
 }
